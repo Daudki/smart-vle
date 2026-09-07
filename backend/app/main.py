@@ -5,7 +5,7 @@ import jwt
 
 app = FastAPI()
 
-SECERET_KEY = "the-outcats-finally-returns"
+SECRET_KEY = "the-outcats-finally-returns"
 ALGORITHM = "HS256"
 
 app.add_middleware(
@@ -21,13 +21,13 @@ def read_root():
     return {"message": "Server is running"}
 
 def create_access_token(username: str, role: str) -> str:
-    expire = datetime.utcnow() + timedelta(hours = 8)
+    expire = datetime.now(datetime.timezone.utc) + timedelta(hours = 8)
     payload = {
         "sub": username,
         "role": role,
         "exp": expire
     }
-    return jwt.encode(payload, SECERET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 @app.post("/auth/login")
 def login(username: str, password: str):
