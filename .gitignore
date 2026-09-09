@@ -10,6 +10,8 @@ backend/__pycache__/
 backend/.pytest_cache/
 backend/*.pyc
 backend/.DS_Store
+**/__pycache__/
+*.pyc
 
 # OS / editor
 .DS_Store
@@ -18,3 +20,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+#Database
+*.db
+
+*.jpg

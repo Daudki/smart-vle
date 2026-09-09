@@ -1,12 +1,22 @@
+import Calendar from "../components/Calendar"
+import AnnouncementsBoard from "../components/AnnouncementsBoard"
+import Timeline from "../components/Timeline"
+import { getName } from "../api"
+
 function StudentDashboard() {
-    const name = localStorage.getItem("name")
+    const name = getName()
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-                <h1 className="text-2xl font-bold text-green-800 mb-2">Student Dashboard</h1>
-                <p className="text-gray-600">Welcome, {name || "Student"}.</p>
+        <div className="p-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Hi, {name || "Student"}! 👋</h1>
+
+            <Timeline />
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <Calendar />
             </div>
+
+            <AnnouncementsBoard />
         </div>
     )
 }

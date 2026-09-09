@@ -1,5 +1,6 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { useNavigate, Link } from "react-router-dom"
+import { getRole } from "../api"
 
 function Login() {
     const navigate = useNavigate()
@@ -7,6 +8,21 @@ function Login() {
     const [password, setPassword] = useState("")
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        const token = localStorage.getItem("token")
+        if (!token) return
+
+        const dashboards = {
+            lecturer: "/lecturer-dashboard",
+            student: "/student-dashboard",
+            coordinator: "/coordinator-dashboard",
+            hod: "/hod-dashboard",
+            admin: "/admin-dashboard",
+        }
+
+        navigate(dashboards[getRole()] || "/", { replace: true })
+    }, [navigate])
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -22,11 +38,18 @@ function Login() {
                 throw new Error(data.detail || "Login failed")
             }
 
-            console.log("logged in as:", data.name, data.role)
             localStorage.setItem("token", data.access_token)
             localStorage.setItem("role", data.role)
             localStorage.setItem("name", data.name)
-            navigate(data.role === "lecturer" ? "/lecturer-dashboard" : "/student-dashboard")
+
+            const dashboards = {
+                lecturer: "/lecturer-dashboard",
+                student: "/student-dashboard",
+                coordinator: "/coordinator-dashboard",
+                hod: "/hod-dashboard",
+                admin: "/admin-dashboard",
+            }
+            navigate(dashboards[data.role] || "/")
         } catch (err) {
             setError(err.message)
         } finally {
@@ -44,6 +67,12 @@ function Login() {
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
                 {error && <p className="text-red-600 text-sm mb-3 ">{error}</p>}
                 <button type="submit" className="w-full bg-green-800 text-white py-2 rounded disabled:opacity-50">{loading ? "Logging in..." : "Log In"}</button>
+                <p className="text-sm text-gray-600 mt-4">
+                    New student? <Link to="/register" className="text-green-800 font-medium">Register here</Link>
+                </p>
+                <p className="text-xs text-gray-400 mt-4">
+                    Demo accounts: Lecturer/lecturer101, Coordinator/coordinator101, HOD/hod101, Admin/admin101
+                </p>
             </form>
         </div>
     )
