@@ -3,7 +3,10 @@ from nltk.corpus import wordnet as wn
 
 def suggest_synonyms(answer: str, pos: str | None = None) -> dict:
     word = answer.strip().lower().replace(" ", "_")
-    synsets = wn.synsets(word, pos=pos)
+    try:
+        synsets = wn.synsets(word, pos=pos)
+    except LookupError:
+        return {}
 
     suggestions = {}
     for s in synsets:

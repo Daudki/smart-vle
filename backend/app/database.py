@@ -32,7 +32,10 @@ def ensure_database_schema() -> None:
                 continue
 
             column_type = column.type.compile(dialect=engine.dialect)
-            sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}'
+            default_sql = " DEFAULT 1" if column.name in {"max_attempts", "attempt_number"} else (
+                " DEFAULT 0" if column.name == "early_submission_bonus" else ""
+            )
+            sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}{default_sql}'
             with engine.begin() as connection:
                 connection.execute(text(sql))
 

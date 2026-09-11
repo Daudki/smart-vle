@@ -71,6 +71,8 @@ class Exam(Base):
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
+    max_attempts = Column(Integer, nullable=False, default=1)
+    early_submission_bonus = Column(Float, nullable=False, default=0.0)
     status = Column(Enum(ExamStatus), default=ExamStatus.pending)
 
     lecturer = relationship("User", back_populates="exams")
@@ -147,6 +149,7 @@ class Submission(Base):
     per_question_result = Column(JSON, nullable=True)
     overridden_score = Column(Float, nullable=True)
     override_note = Column(String, nullable=True)
+    attempt_number = Column(Integer, nullable=False, default=1)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
     student = relationship("User", back_populates="submissions")

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { apiFetch, downloadFile, getRole } from "../api"
 
 function ExamDetail() {
     const { id } = useParams()
+    const navigate = useNavigate()
     const role = getRole()
     const isPrivileged = ["lecturer", "coordinator", "hod", "admin"].includes(role)
 
@@ -17,6 +18,8 @@ function ExamDetail() {
     const [submissions, setSubmissions] = useState([])
     const [report, setReport] = useState(null)
     const [overrideDrafts, setOverrideDrafts] = useState({})
+    const [editing, setEditing] = useState(false)
+    const [editDraft, setEditDraft] = useState({})
 
     useEffect(() => {
         load()
@@ -28,11 +31,17 @@ function ExamDetail() {
             try {
                 const sub = await apiFetch(`/exams/${id}/my-submission`)
                 setSubmission(sub)
-            } catch (e) {}
+            } catch (e) { }
         }
         try {
             const data = await apiFetch(`/exams/${id}`)
             setExam(data)
+            setEditDraft({
+                title: data.title,
+                duration_minutes: data.duration_minutes,
+                max_attempts: data.max_attempts,
+                early_submission_bonus: data.early_submission_bonus,
+            })
         } catch (e) {
             setError(e.message)
             return
@@ -42,11 +51,39 @@ function ExamDetail() {
             try {
                 const subs = await apiFetch(`/exams/${id}/submissions`)
                 setSubmissions(subs)
-            } catch (e) {}
+            } catch (e) { }
             try {
                 const rep = await apiFetch(`/reports/exam/${id}`)
                 setReport(rep)
-            } catch (e) {}
+            } catch (e) { }
+        }
+    }
+
+    async function saveExam() {
+        try {
+            await apiFetch(`/exams/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    title: editDraft.title,
+                    duration_minutes: Number(editDraft.duration_minutes),
+                    max_attempts: Number(editDraft.max_attempts),
+                    early_submission_bonus: Number(editDraft.early_submission_bonus),
+                }),
+            })
+            setEditing(false)
+            load()
+        } catch (err) {
+            setError(err.message)
+        }
+    }
+
+    async function deleteExam() {
+        if (!window.confirm("Delete this exam? This cannot be undone.")) return
+        try {
+            await apiFetch(`/exams/${id}`, { method: "DELETE" })
+            navigate(role === "lecturer" ? "/lecturer-dashboard" : "/coordinator-dashboard", { replace: true })
+        } catch (err) {
+            setError(err.message)
         }
     }
 
@@ -122,11 +159,10 @@ function ExamDetail() {
                 <div className="flex justify-between items-start mb-1">
                     <h1 className="text-xl font-bold text-green-800">{exam.title}</h1>
                     {exam.status && (
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                            exam.status === "approved" ? "bg-green-100 text-green-800" :
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${exam.status === "approved" ? "bg-green-100 text-green-800" :
                             exam.status === "rejected" ? "bg-red-100 text-red-800" :
-                            "bg-yellow-100 text-yellow-800"
-                        }`}>
+                                "bg-yellow-100 text-yellow-800"
+                            }`}>
                             {exam.status}
                         </span>
                     )}
@@ -134,6 +170,30 @@ function ExamDetail() {
                 <p className="text-gray-500 text-sm mb-4">
                     {new Date(exam.start_time).toLocaleString()} - {new Date(exam.end_time).toLocaleString()}
                 </p>
+
+                {editing ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-4 grid gap-3">
+                        <input value={editDraft.title} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} className="border rounded px-3 py-2" />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input type="number" min="1" value={editDraft.duration_minutes} onChange={(e) => setEditDraft({ ...editDraft, duration_minutes: e.target.value })} className="border rounded px-3 py-2" placeholder="Minutes" />
+                            <input type="number" min="1" value={editDraft.max_attempts} onChange={(e) => setEditDraft({ ...editDraft, max_attempts: e.target.value })} className="border rounded px-3 py-2" placeholder="Max attempts" />
+                            <input type="number" min="0" step="0.5" value={editDraft.early_submission_bonus} onChange={(e) => setEditDraft({ ...editDraft, early_submission_bonus: e.target.value })} className="border rounded px-3 py-2" placeholder="Early bonus" />
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={saveExam} className="bg-green-800 text-white px-3 py-2 rounded text-sm">Save changes</button>
+                            <button onClick={() => setEditing(false)} className="border px-3 py-2 rounded text-sm">Cancel</button>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-600 mb-4">{exam.max_attempts} attempt{exam.max_attempts === 1 ? "" : "s"} allowed{exam.early_submission_bonus > 0 ? ` - ${exam.early_submission_bonus} early-finish bonus` : ""}</p>
+                )}
+
+                {role === "lecturer" && (
+                    <div className="mb-4 flex gap-2">
+                        <button onClick={() => setEditing(true)} className="border border-green-800 text-green-800 px-3 py-1 rounded text-sm">Edit exam</button>
+                        <button onClick={deleteExam} className="border border-red-700 text-red-700 px-3 py-1 rounded text-sm">Delete exam</button>
+                    </div>
+                )}
 
                 {role === "coordinator" && exam.status === "pending" && (
                     <div className="mb-4 flex gap-2">
@@ -163,6 +223,11 @@ function ExamDetail() {
                 {submission && (
                     <p className="text-lg font-bold text-green-800 mb-2">
                         Score: {submission.overridden_score !== null && submission.overridden_score !== undefined ? submission.overridden_score : submission.score} / {submission.max_score}
+                    </p>
+                )}
+                {role === "student" && submission && (
+                    <p className="text-sm text-gray-600 mb-3">
+                        Attempt {submission.attempts_used} of {submission.max_attempts}
                     </p>
                 )}
                 {submission && submission.overridden_score !== null && submission.overridden_score !== undefined && (
@@ -247,6 +312,11 @@ function ExamDetail() {
                     </div>
                 ))}
 
+                {role === "student" && submission && submission.attempts_used < submission.max_attempts && exam.status === "approved" && (
+                    <button onClick={() => { setSubmission(null); setAnswers({}); setSubmitError("") }} className="w-full border border-green-800 text-green-800 py-2 rounded mb-3">
+                        Start attempt {submission.attempts_used + 1} of {submission.max_attempts}
+                    </button>
+                )}
                 {role === "student" && !submission && exam.status === "approved" && (
                     <>
                         {submitError && <p className="text-red-600 text-sm mb-3">{submitError}</p>}

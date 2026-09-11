@@ -7,6 +7,7 @@ function Header() {
     const location = useLocation()
     const [session, setSession] = useState({ token: getToken(), name: getName() })
     const [menuOpen, setMenuOpen] = useState(false)
+    const [menuPath, setMenuPath] = useState("")
 
     useEffect(() => {
         const syncSession = () => {
@@ -23,6 +24,7 @@ function Header() {
 
     const token = session.token
     const name = session.name
+    const isMenuOpen = menuOpen && menuPath === location.pathname
 
     const initials = name
         ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
@@ -36,13 +38,16 @@ function Header() {
                 <div className="flex items-center gap-4">
                     <div className="relative">
                         <button
-                            onClick={() => setMenuOpen(!menuOpen)}
+                            onClick={() => {
+                                setMenuPath(location.pathname)
+                                setMenuOpen(!isMenuOpen)
+                            }}
                             className="w-9 h-9 rounded-full bg-green-800 text-white text-sm font-bold flex items-center justify-center"
                         >
                             {initials}
                         </button>
 
-                        {menuOpen && (
+                        {isMenuOpen && (
                             <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-md py-1 z-10">
                                 <p className="px-3 py-2 text-sm text-gray-600 border-b">{name}</p>
                                 <button

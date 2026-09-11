@@ -10,12 +10,14 @@ function CreateExam() {
     const [startTime, setStartTime] = useState("")
     const [endTime, setEndTime] = useState("")
     const [durationMinutes, setDurationMinutes] = useState(60)
+    const [maxAttempts, setMaxAttempts] = useState(1)
+    const [earlyBonus, setEarlyBonus] = useState(0)
     const [courseId, setCourseId] = useState("")
     const [courses, setCourses] = useState([])
     const [examError, setExamError] = useState("")
 
     useEffect(() => {
-        apiFetch("/courses").then(setCourses).catch(() => {})
+        apiFetch("/courses").then(setCourses).catch(() => { })
     }, [])
 
     const [qType, setQType] = useState("mcq")
@@ -51,6 +53,8 @@ function CreateExam() {
                     start_time: new Date(startTime).toISOString(),
                     end_time: new Date(endTime).toISOString(),
                     duration_minutes: parseInt(durationMinutes, 10),
+                    max_attempts: parseInt(maxAttempts, 10),
+                    early_submission_bonus: parseFloat(earlyBonus),
                     course_id: courseId || null,
                 }),
             })
@@ -212,6 +216,14 @@ function CreateExam() {
 
                     <label className="block text-sm font-medium mb-1">Duration (minutes)</label>
                     <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <label className="block text-sm font-medium">Maximum attempts
+                            <input type="number" min="1" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} className="w-full border rounded px-3 py-1 mt-1" />
+                        </label>
+                        <label className="block text-sm font-medium">Early completion bonus
+                            <input type="number" min="0" step="0.5" value={earlyBonus} onChange={(e) => setEarlyBonus(e.target.value)} className="w-full border rounded px-3 py-1 mt-1" />
+                        </label>
+                    </div>
 
                     <label className="block text-sm font-medium mb-1">Course (optional)</label>
                     <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="w-full border rounded px-3 py-1 mb-4">

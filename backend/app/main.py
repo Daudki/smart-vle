@@ -258,6 +258,7 @@ def _exam_summary(e: models.Exam) -> schemas.ExamSummary:
     return schemas.ExamSummary(
         id=e.id, title=e.title, start_time=e.start_time,
         end_time=e.end_time, lecturer_name=e.lecturer.name, status=e.status.value,
+        max_attempts=e.max_attempts, early_submission_bonus=e.early_submission_bonus,
     )
 
 
@@ -266,11 +267,14 @@ def create_exam(payload: schemas.ExamCreate, db: Session = Depends(get_db),
                  lecturer: models.User = Depends(auth.require_role(R.lecturer))):
     if payload.end_time <= payload.start_time:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "end_time must be after start_time")
+    if payload.duration_minutes < 1 or payload.max_attempts < 1 or payload.early_submission_bonus < 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Exam limits must be positive")
 
     exam = models.Exam(
         lecturer_id=lecturer.id, course_id=payload.course_id, title=payload.title,
         start_time=payload.start_time, end_time=payload.end_time,
-        duration_minutes=payload.duration_minutes, status=models.ExamStatus.pending,
+        duration_minutes=payload.duration_minutes, max_attempts=payload.max_attempts,
+        early_submission_bonus=payload.early_submission_bonus, status=models.ExamStatus.pending,
     )
     db.add(exam); db.commit(); db.refresh(exam)
     return _exam_summary(exam)
@@ -305,6 +309,14 @@ def update_exam(exam_id: str, payload: schemas.ExamUpdate, db: Session = Depends
         exam.end_time = payload.end_time
     if payload.duration_minutes is not None:
         exam.duration_minutes = payload.duration_minutes
+    if payload.max_attempts is not None:
+        if payload.max_attempts < 1:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Maximum attempts must be at least 1")
+        exam.max_attempts = payload.max_attempts
+    if payload.early_submission_bonus is not None:
+        if payload.early_submission_bonus < 0:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Early submission bonus cannot be negative")
+        exam.early_submission_bonus = payload.early_submission_bonus
     db.commit(); db.refresh(exam)
     return _exam_summary(exam)
 
@@ -334,6 +346,9 @@ def delete_exam(exam_id: str, db: Session = Depends(get_db),
     if not (is_owner or is_privileged):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to delete this exam")
 
+    db.query(models.Submission).filter(models.Submission.exam_id == exam.id).delete(
+        synchronize_session=False
+    )
     db.delete(exam)
     db.commit()
     return {"message": "Exam deleted"}
@@ -403,6 +418,8 @@ def get_exam_detail(exam_id: str, db: Session = Depends(get_db),
     return schemas.ExamDetail(
         id=exam.id, title=exam.title, start_time=exam.start_time,
         end_time=exam.end_time, duration_minutes=exam.duration_minutes,
+        max_attempts=exam.max_attempts, early_submission_bonus=exam.early_submission_bonus,
+        status=exam.status.value,
         questions=questions_out,
     )
 
@@ -421,6 +438,8 @@ def _get_owned_exam(exam_id: str, lecturer: models.User, db: Session) -> models.
 @app.post("/questions/suggest-answers")
 def suggest_answers(payload: schemas.SuggestVariantsRequest,
                      lecturer: models.User = Depends(auth.require_role(R.lecturer))):
+    if not payload.answer.strip():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Answer cannot be empty")
     variants = generate_variants(payload.answer)
     synonym_senses = suggest_synonyms(payload.answer)
     return {"canonical": payload.answer, "variants": variants, "synonym_senses": synonym_senses}
@@ -492,11 +511,27 @@ def get_my_submission(exam_id: str, db: Session = Depends(get_db),
     submission = (
         db.query(models.Submission)
         .filter(models.Submission.exam_id == exam_id, models.Submission.student_id == student.id)
+        .order_by(models.Submission.submitted_at.desc())
         .first()
     )
     if submission is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No submission yet")
-    return submission
+    attempts_used = db.query(models.Submission).filter(
+        models.Submission.exam_id == exam_id, models.Submission.student_id == student.id
+    ).count()
+    exam = db.query(models.Exam).filter(models.Exam.id == exam_id).first()
+    return {
+        "id": submission.id,
+        "score": submission.score,
+        "max_score": submission.max_score,
+        "per_question_result": submission.per_question_result,
+        "overridden_score": submission.overridden_score,
+        "override_note": submission.override_note,
+        "submitted_at": submission.submitted_at,
+        "attempt_number": submission.attempt_number,
+        "attempts_used": attempts_used,
+        "max_attempts": exam.max_attempts,
+    }
 
 
 @app.post("/submissions", response_model=schemas.SubmissionResult)
@@ -514,19 +549,20 @@ def submit_answers(payload: schemas.SubmissionCreate, db: Session = Depends(get_
     if now > exam.end_time:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Exam window has closed")
 
-    already = (
-        db.query(models.Submission)
-        .filter(models.Submission.student_id == student.id, models.Submission.exam_id == exam.id)
-        .first()
-    )
-    if already:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Already submitted")
+    attempt_count = db.query(models.Submission).filter(
+        models.Submission.student_id == student.id, models.Submission.exam_id == exam.id
+    ).count()
+    if attempt_count >= exam.max_attempts:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Maximum attempts reached")
 
     score, max_score, per_question_result = grade_submission(db, exam, payload.answers)
+    if exam.early_submission_bonus > 0 and now < exam.end_time:
+        score = min(max_score, score + exam.early_submission_bonus)
 
     submission = models.Submission(
         student_id=student.id, exam_id=exam.id, answers=payload.answers,
         score=score, max_score=max_score, per_question_result=per_question_result,
+        attempt_number=attempt_count + 1,
     )
     db.add(submission); db.commit(); db.refresh(submission)
     return submission

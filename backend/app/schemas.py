@@ -9,6 +9,8 @@ class ExamCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     duration_minutes: int
+    max_attempts: int = 1
+    early_submission_bonus: float = 0.0
     course_id: str | None = None
 
 
@@ -17,6 +19,8 @@ class ExamUpdate(BaseModel):
     start_time: datetime | None = None
     end_time: datetime | None = None
     duration_minutes: int | None = None
+    max_attempts: int | None = None
+    early_submission_bonus: float | None = None
 
 
 class ExamStatusUpdate(BaseModel):
@@ -30,6 +34,8 @@ class ExamSummary(BaseModel):
     end_time: datetime
     lecturer_name: str
     status: str
+    max_attempts: int = 1
+    early_submission_bonus: float = 0.0
 
     class Config:
         from_attributes = True
@@ -41,6 +47,9 @@ class ExamDetail(BaseModel):
     start_time: datetime
     end_time: datetime
     duration_minutes: int
+    max_attempts: int
+    early_submission_bonus: float
+    status: str
     questions: list[dict]
 
     class Config:
@@ -92,6 +101,7 @@ class SubmissionResult(BaseModel):
     overridden_score: float | None = None
     override_note: str | None = None
     submitted_at: datetime
+    attempt_number: int
 
     class Config:
         from_attributes = True
