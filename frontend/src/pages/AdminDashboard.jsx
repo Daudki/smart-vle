@@ -25,6 +25,7 @@ function AdminDashboard() {
 
     async function createUser() {
         if (!newUser.name || !newUser.email || !newUser.password) return
+        setError("")
         try {
             await apiFetch("/admin/users", { method: "POST", body: JSON.stringify(newUser) })
             setNewUser({ name: "", email: "", password: "", role: "lecturer" })
@@ -33,15 +34,21 @@ function AdminDashboard() {
     }
 
     async function toggleActive(user) {
+        setError("")
         try {
             await apiFetch(`/admin/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !user.is_active }) })
             loadUsers()
         } catch (e) { setError(e.message) }
     }
 
-    async function deleteUser(id) {
+    async function deleteUser(user) {
+        const confirmed = window.confirm(
+            `Permanently delete ${user.name}? Linked submissions and academic records cannot be deleted with the account. Deactivate the account instead if records must be retained.`
+        )
+        if (!confirmed) return
+        setError("")
         try {
-            await apiFetch(`/admin/users/${id}`, { method: "DELETE" })
+            await apiFetch(`/admin/users/${user.id}`, { method: "DELETE" })
             loadUsers()
         } catch (e) { setError(e.message) }
     }
@@ -74,6 +81,9 @@ function AdminDashboard() {
                         Download (.xlsx)
                     </button>
                 </div>
+                <p className="text-sm text-gray-600 mb-4">
+                    Deactivate a student when they have submissions. This preserves grading and report history; permanent deletion is only available when no linked records exist.
+                </p>
 
                 <div className="flex gap-2 mb-4 flex-wrap">
                     <input placeholder="Name" value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} className="border rounded px-2 py-1 text-sm flex-1" />
@@ -106,7 +116,12 @@ function AdminDashboard() {
                                         {u.is_active ? "Active" : "Inactive"}
                                     </button>
                                 </td>
-                                <td><button onClick={() => deleteUser(u.id)} className="text-red-600">delete</button></td>
+                                <td className="whitespace-nowrap">
+                                    <button onClick={() => toggleActive(u)} className="text-amber-700 mr-3">
+                                        {u.is_active ? "deactivate" : "activate"}
+                                    </button>
+                                    <button onClick={() => deleteUser(u)} className="text-red-600">delete</button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
