@@ -2,6 +2,7 @@ services:
   - type: web
     name: smart-vle-api
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4')"
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
