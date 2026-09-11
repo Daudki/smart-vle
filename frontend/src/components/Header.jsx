@@ -16,9 +16,11 @@ function Header() {
 
         syncSession()
         window.addEventListener("storage", syncSession)
+        window.addEventListener("smart-vle-session-change", syncSession)
 
         return () => {
             window.removeEventListener("storage", syncSession)
+            window.removeEventListener("smart-vle-session-change", syncSession)
         }
     }, [location.pathname])
 
@@ -31,7 +33,7 @@ function Header() {
         : ""
 
     return (
-        <nav className="w-full bg-white border-b border-gray-400 py-3 px-6 flex items-center justify-between relative">
+        <nav className="sticky top-0 z-50 w-full bg-white border-b border-gray-400 py-3 px-6 flex items-center justify-between relative">
             <h1 className="text-green-800 font-bold text-lg">VLE</h1>
 
             {token && (

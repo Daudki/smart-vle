@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { API_BASE, getRole } from "../api"
+import { API_BASE, getRole, saveSession } from "../api"
 
 function Login() {
     const navigate = useNavigate()
@@ -38,9 +38,7 @@ function Login() {
                 throw new Error(data.detail || "Login failed")
             }
 
-            localStorage.setItem("token", data.access_token)
-            localStorage.setItem("role", data.role)
-            localStorage.setItem("name", data.name)
+            saveSession({ token: data.access_token, role: data.role, name: data.name })
 
             const dashboards = {
                 lecturer: "/lecturer-dashboard",

@@ -1,21 +1,53 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const SESSION_KEY = "smart-vle-session"
+
+function getSession() {
+    try {
+        const stored = localStorage.getItem(SESSION_KEY)
+        if (stored) return JSON.parse(stored)
+    } catch (e) {
+        localStorage.removeItem(SESSION_KEY)
+    }
+
+    const session = {
+        token: localStorage.getItem("token"),
+        role: localStorage.getItem("role"),
+        name: localStorage.getItem("name"),
+    }
+    return session.token ? session : null
+}
+
+function saveSession(session) {
+    const value = {
+        token: session.token,
+        role: session.role,
+        name: session.name,
+    }
+    localStorage.setItem(SESSION_KEY, JSON.stringify(value))
+    localStorage.setItem("token", value.token)
+    localStorage.setItem("role", value.role)
+    localStorage.setItem("name", value.name)
+    window.dispatchEvent(new Event("smart-vle-session-change"))
+}
 
 function getToken() {
-    return localStorage.getItem("token")
+    return getSession()?.token || null
 }
 
 function getRole() {
-    return localStorage.getItem("role")
+    return getSession()?.role || null
 }
 
 function getName() {
-    return localStorage.getItem("name")
+    return getSession()?.name || null
 }
 
 function clearSession() {
+    localStorage.removeItem(SESSION_KEY)
     localStorage.removeItem("token")
     localStorage.removeItem("role")
     localStorage.removeItem("name")
+    window.dispatchEvent(new Event("smart-vle-session-change"))
 }
 
 function logout(navigate) {
@@ -60,4 +92,4 @@ async function downloadFile(path, filename) {
     window.URL.revokeObjectURL(url)
 }
 
-export { API_BASE, getToken, getRole, getName, clearSession, logout, apiFetch, downloadFile }
+export { API_BASE, getSession, saveSession, getToken, getRole, getName, clearSession, logout, apiFetch, downloadFile }

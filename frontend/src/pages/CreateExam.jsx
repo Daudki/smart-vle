@@ -9,7 +9,6 @@ function CreateExam() {
     const [title, setTitle] = useState("")
     const [startTime, setStartTime] = useState("")
     const [endTime, setEndTime] = useState("")
-    const [durationMinutes, setDurationMinutes] = useState(60)
     const [maxAttempts, setMaxAttempts] = useState(1)
     const [earlyBonus, setEarlyBonus] = useState(0)
     const [courseId, setCourseId] = useState("")
@@ -36,12 +35,20 @@ function CreateExam() {
 
     const [questionsAdded, setQuestionsAdded] = useState([])
 
+    const durationMinutes = startTime && endTime
+        ? Math.round((new Date(endTime) - new Date(startTime)) / 60000)
+        : 0
+
     async function handleCreateExam(e) {
         e.preventDefault()
         setExamError("")
 
         if (!title || !startTime || !endTime) {
             setExamError("Fill in title, start time, and end time.")
+            return
+        }
+        if (durationMinutes < 1) {
+            setExamError("End time must be after the start time.")
             return
         }
 
@@ -52,7 +59,7 @@ function CreateExam() {
                     title,
                     start_time: new Date(startTime).toISOString(),
                     end_time: new Date(endTime).toISOString(),
-                    duration_minutes: parseInt(durationMinutes, 10),
+                    duration_minutes: durationMinutes,
                     max_attempts: parseInt(maxAttempts, 10),
                     early_submission_bonus: parseFloat(earlyBonus),
                     course_id: courseId || null,
@@ -208,14 +215,19 @@ function CreateExam() {
                     <label className="block text-sm font-medium mb-1">Title</label>
                     <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
 
-                    <label className="block text-sm font-medium mb-1">Start time</label>
-                    <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
-
-                    <label className="block text-sm font-medium mb-1">End time</label>
-                    <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
-
-                    <label className="block text-sm font-medium mb-1">Duration (minutes)</label>
-                    <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="w-full border rounded px-3 py-1 mb-4" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <label className="block text-sm font-medium">Starts
+                            <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full border rounded px-3 py-2 mt-1" />
+                        </label>
+                        <label className="block text-sm font-medium">Finishes
+                            <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full border rounded px-3 py-2 mt-1" />
+                        </label>
+                    </div>
+                    <div className={`rounded border px-3 py-2 mb-4 text-sm ${durationMinutes > 0 ? "border-green-200 bg-green-50 text-green-800" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
+                        {durationMinutes > 0
+                            ? `Exam duration: ${durationMinutes} minute${durationMinutes === 1 ? "" : "s"}`
+                            : "Choose a start and finish time to calculate the duration."}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                         <label className="block text-sm font-medium">Maximum attempts
                             <input type="number" min="1" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} className="w-full border rounded px-3 py-1 mt-1" />

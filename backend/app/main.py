@@ -267,13 +267,14 @@ def create_exam(payload: schemas.ExamCreate, db: Session = Depends(get_db),
                  lecturer: models.User = Depends(auth.require_role(R.lecturer))):
     if payload.end_time <= payload.start_time:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "end_time must be after start_time")
-    if payload.duration_minutes < 1 or payload.max_attempts < 1 or payload.early_submission_bonus < 0:
+    calculated_duration = round((payload.end_time - payload.start_time).total_seconds() / 60)
+    if calculated_duration < 1 or payload.max_attempts < 1 or payload.early_submission_bonus < 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Exam limits must be positive")
 
     exam = models.Exam(
         lecturer_id=lecturer.id, course_id=payload.course_id, title=payload.title,
         start_time=payload.start_time, end_time=payload.end_time,
-        duration_minutes=payload.duration_minutes, max_attempts=payload.max_attempts,
+        duration_minutes=calculated_duration, max_attempts=payload.max_attempts,
         early_submission_bonus=payload.early_submission_bonus, status=models.ExamStatus.pending,
     )
     db.add(exam); db.commit(); db.refresh(exam)
@@ -307,8 +308,9 @@ def update_exam(exam_id: str, payload: schemas.ExamUpdate, db: Session = Depends
         exam.start_time = payload.start_time
     if payload.end_time is not None:
         exam.end_time = payload.end_time
-    if payload.duration_minutes is not None:
-        exam.duration_minutes = payload.duration_minutes
+    if exam.end_time <= exam.start_time:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "end_time must be after start_time")
+    exam.duration_minutes = round((exam.end_time - exam.start_time).total_seconds() / 60)
     if payload.max_attempts is not None:
         if payload.max_attempts < 1:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Maximum attempts must be at least 1")
