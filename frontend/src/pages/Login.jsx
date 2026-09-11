@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { getRole } from "../api"
+import { API_BASE, getRole } from "../api"
 
 function Login() {
     const navigate = useNavigate()
@@ -31,7 +31,7 @@ function Login() {
 
         try {
             const params = new URLSearchParams({ username, password })
-            const response = await fetch(`http://localhost:8000/auth/login?${params.toString()}`, { method: "POST" })
+            const response = await fetch(`${API_BASE}/auth/login?${params.toString()}`, { method: "POST" })
             const data = await response.json()
 
             if (!response.ok) {

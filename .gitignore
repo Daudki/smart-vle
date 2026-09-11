@@ -23,5 +23,7 @@ Thumbs.db
 
 #Database
 *.db
+backend/.env
+frontend/.env*
 
 *.jpg
